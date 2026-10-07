@@ -23,6 +23,7 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CatalogService } from './catalog.service';
 import { SmartPublishDto } from './dto/smart-publish.dto';
+import { UpdateBulkSettingsDto } from './dto/update-bulk-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -53,6 +54,18 @@ export class CatalogController {
     @Body('status') status: ProductStatus,
   ) {
     return this.catalogService.updateStatus(id, user.id, status);
+  }
+
+  @Patch(':id/bulk-settings')
+  @ApiOperation({
+    summary: 'Set the minimum quantity buyers must request for a bulk order',
+  })
+  async updateBulkSettings(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateBulkSettingsDto,
+  ) {
+    return this.catalogService.updateBulkSettings(id, user.id, dto.minBulkQty);
   }
 
   @Delete(':id')

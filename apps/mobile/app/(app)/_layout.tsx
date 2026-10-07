@@ -29,6 +29,7 @@ export default function AppLayout() {
     pathname.includes('/buyer/b2b-request') ||
     pathname.includes('/buyer/search') ||
     pathname.includes('/product') ||
+    pathname.includes('/analytics') ||
     pathname.includes('/capture');
 
   // NOTE: We must ALWAYS render <Tabs> (never return early with a plain <View>).
@@ -140,6 +141,7 @@ export default function AppLayout() {
         <Tabs.Screen name="orders" options={{ href: null }} />
         <Tabs.Screen name="capture" options={{ href: null }} />
         <Tabs.Screen name="product" options={{ href: null }} />
+        <Tabs.Screen name="analytics" options={{ href: null }} />
       </Tabs>
     );
   }
@@ -213,6 +215,7 @@ export default function AppLayout() {
       <Tabs.Screen name="buyer-orders" options={{ href: null }} />
       <Tabs.Screen name="capture" options={{ href: null }} />
       <Tabs.Screen name="product" options={{ href: null }} />
+      <Tabs.Screen name="analytics" options={{ href: null }} />
     </Tabs>
   );
 }

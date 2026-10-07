@@ -92,6 +92,7 @@ export class UserRepository {
         preferredLanguage: data.preferredLanguage ?? 'en',
         bio: data.bio,
         avatarUrl: data.avatarUrl,
+        address: data.address,
       },
     });
   }
@@ -128,6 +129,7 @@ export class UserRepository {
         ...(data.preferredLanguage !== undefined ? { preferredLanguage: data.preferredLanguage } : {}),
         ...(data.bio !== undefined ? { bio: data.bio } : {}),
         ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
+        ...(data.address !== undefined ? { address: data.address.trim() || null } : {}),
       },
     });
   }

@@ -1,9 +1,11 @@
 import {
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -18,21 +20,20 @@ export class CreateB2BInquiryDto {
   productId!: string;
 
   @ApiProperty({
-    description: 'Bulk quantity requested (e.g. 50, 100, 500)',
+    description: "Units wanted; must be at least the product's minimum bulk quantity",
     example: 100,
-    minimum: 1,
   })
-  @IsNumber()
+  @IsInt()
   @Min(1)
   requestedQuantity!: number;
 
-  @ApiPropertyOptional({
-    description: 'Target price per unit in INR',
+  @ApiProperty({
+    description: 'Price per unit (INR) the buyer offers',
     example: 350,
   })
-  @IsOptional()
-  @IsNumber()
-  targetPrice?: number;
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(1)
+  targetPrice!: number;
 
   @ApiPropertyOptional({
     description: 'Required delivery timeframe',
@@ -40,6 +41,7 @@ export class CreateB2BInquiryDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   deliveryTimeline?: string;
 
   @ApiPropertyOptional({
@@ -48,5 +50,6 @@ export class CreateB2BInquiryDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   message?: string;
 }

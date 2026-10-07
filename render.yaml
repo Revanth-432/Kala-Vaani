@@ -1,0 +1,53 @@
+# Render Blueprint: Kala Vaani backend (NestJS API)
+# Render → New → Blueprint → pick this repo. Secrets marked `sync: false`
+# are typed into the Render dashboard; they never live in this file.
+services:
+  - type: web
+    name: kala-vaani-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: .
+    # Install only the backend + database workspaces (not the mobile app), then build both
+    buildCommand: >-
+      npm ci --include=dev --workspace=@artisan/database --workspace=@artisan/backend --include-workspace-root &&
+      npm run generate --workspace=@artisan/database &&
+      npm run build --workspace=@artisan/database &&
+      npm run build --workspace=@artisan/backend
+    startCommand: node apps/backend/dist/main.js
+    healthCheckPath: /api/docs
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: API_PREFIX
+        value: api/v1
+      # Supabase (same values as apps/backend/.env)
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      # AI services
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: BG_REMOVAL_API_KEY
+        sync: false
+      - key: STABLE_DIFFUSION_API_KEY
+        sync: false
+      - key: PHOTOROOM_API_KEY
+        sync: false
+      # Payments
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false

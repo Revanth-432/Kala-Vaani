@@ -21,7 +21,9 @@ export default function ProcessingScreen() {
   // Role Protection Guard
   useEffect(() => {
     if (!isLoading && role && (role === 'BUYER' || role === 'B2B_BUYER')) {
-      router.replace('/(app)/buyer/feed');
+      setTimeout(() => {
+        router.replace('/(app)/buyer/feed');
+      }, 0);
     }
   }, [role, isLoading, router]);
 
@@ -51,7 +53,9 @@ export default function ProcessingScreen() {
 
   const processMediaWithAI = async () => {
     if (!imageUri) {
-      router.replace('/(app)/capture/image');
+      setTimeout(() => {
+        router.replace('/(app)/capture/image');
+      }, 0);
       return;
     }
 

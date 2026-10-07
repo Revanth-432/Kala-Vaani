@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -66,7 +66,7 @@ interface ProductDetail {
 
 
 export default function BuyerCheckoutScreen() {
-  const { productId } = useLocalSearchParams<{ productId: string }>();
+  const { productId, inquiryId } = useLocalSearchParams<{ productId?: string; inquiryId?: string }>();
   const router = useRouter();
   const { t, language } = useT();
   const insets = useSafeAreaInsets();
@@ -81,6 +81,8 @@ export default function BuyerCheckoutScreen() {
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [quantity, setQuantity] = useState(1);
+  // Paying for an agreed bulk request: quantity and price are fixed
+  const [bulk, setBulk] = useState<{ id: string; quantity: number; agreedPrice: number } | null>(null);
   const [shippingAddress, setShippingAddress] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
   const [buyerNotes, setBuyerNotes] = useState('');
@@ -92,17 +94,37 @@ export default function BuyerCheckoutScreen() {
   const [pendingOnline, setPendingOnline] = useState<{ orderId: string; payment: RazorpayPaymentDetails } | null>(null);
   const [showRazorpay, setShowRazorpay] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [addressFromProfile, setAddressFromProfile] = useState(false);
+  const addressEditedRef = useRef(false);
 
   const getBaseApiUrl = () => {
     return getApiBaseUrl();
   };
 
   useEffect(() => {
-    if (!productId) return;
-
     const fetchProduct = async () => {
       try {
-        const res = await fetch(`${getBaseApiUrl()}/marketplace/${productId}`);
+        let id = productId;
+        if (inquiryId) {
+          const res = await fetch(`${getBaseApiUrl()}/b2b/inquiries/${inquiryId}`, {
+            headers: { Authorization: `Bearer ${useAuthStore.getState().session?.access_token}` },
+          });
+          if (res.ok) {
+            const inquiry = await res.json();
+            id = inquiry.productId;
+            if (inquiry.agreedPrice) {
+              setBulk({
+                id: inquiry.id,
+                quantity: inquiry.requestedQuantity,
+                agreedPrice: Number(inquiry.agreedPrice),
+              });
+              setQuantity(inquiry.requestedQuantity);
+            }
+          }
+        }
+        if (!id) return;
+
+        const res = await fetch(`${getBaseApiUrl()}/marketplace/${id}`);
         if (res.ok) {
           const data: ProductDetail = await res.json();
           setProduct(data);
@@ -115,12 +137,41 @@ export default function BuyerCheckoutScreen() {
     };
 
     fetchProduct();
-  }, [productId]);
+  }, [productId, inquiryId]);
 
-  const unitPrice = product?.pricing.recommendedPrice || 499;
-  const totalAmount = unitPrice * quantity;
+  // Fill address and phone from the buyer's profile (saved from their last order)
+  useEffect(() => {
+    const token = session?.access_token;
+    if (!token) return;
+    let cancelled = false;
+
+    fetch(`${getBaseApiUrl()}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => {
+        if (cancelled || !me) return;
+        const savedAddress: string = me.profile?.address || '';
+        const savedPhone: string = me.phone || session?.user?.user_metadata?.phone || '';
+        if (savedAddress && !addressEditedRef.current) {
+          setShippingAddress(savedAddress);
+          setAddressFromProfile(true);
+        }
+        if (savedPhone) {
+          setBuyerPhone((current) => (current.trim() ? current : savedPhone));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.access_token]);
+
+  const unitPrice = bulk ? bulk.agreedPrice : product?.pricing.recommendedPrice || 499;
+  const totalAmount = Math.round(unitPrice * quantity * 100) / 100;
 
   const handlePlaceOrder = async () => {
+    if (!product) return;
+
     if (!shippingAddress.trim()) {
       Alert.alert(t('buyer.addressTitle'), t('buyer.addressMsg'));
       return;
@@ -157,7 +208,7 @@ export default function BuyerCheckoutScreen() {
         body: JSON.stringify({
           items: [
             {
-              productId: product!.id,
+              productId: product.id,
               quantity,
             },
           ],
@@ -165,6 +216,7 @@ export default function BuyerCheckoutScreen() {
           buyerPhone: buyerPhone.trim(),
           buyerNotes: buyerNotes.trim() || undefined,
           paymentMethod,
+          inquiryId: bulk?.id,
         }),
       });
 
@@ -353,36 +405,56 @@ export default function BuyerCheckoutScreen() {
               </View>
             </View>
 
-            <View className="mt-3 flex-row items-center justify-between border-t border-artisan-border pt-3">
-              <View>
-                <Text className="text-lg font-bold text-artisan-slate">{t('buyer.quantity')}</Text>
-                {product?.baseStock ? (
-                  <Text className="text-sm text-artisan-muted">{t('buyer.max', { n: product.baseStock })}</Text>
-                ) : null}
+            {bulk ? (
+              <View key="bulk-qty" className="mt-3 border-t border-artisan-border pt-3">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-lg font-bold text-artisan-slate">{t('buyer.quantity')}</Text>
+                  <Text className="text-xl font-bold text-artisan-slate">{quantity}</Text>
+                </View>
+                <View className="mt-1 flex-row items-center">
+                  <ShieldCheck color={COLORS.success} size={16} />
+                  <Text className="ml-1.5 flex-1 text-sm text-artisan-muted">{t('bulk.lockedQty')}</Text>
+                </View>
               </View>
-              <Stepper
-                value={quantity}
-                onMinus={() => !pendingOnline && setQuantity(Math.max(1, quantity - 1))}
-                onPlus={() => {
-                  if (pendingOnline) return;
-                  const limit = product?.baseStock || 10;
-                  if (quantity >= limit) {
-                    Alert.alert(t('buyer.limitTitle'), t('buyer.limitMsg', { n: limit }));
-                    return;
-                  }
-                  setQuantity(quantity + 1);
-                }}
-              />
-            </View>
+            ) : (
+            <View key="retail-qty" className="mt-3 flex-row items-center justify-between border-t border-artisan-border pt-3">
+                <View>
+                  <Text className="text-lg font-bold text-artisan-slate">{t('buyer.quantity')}</Text>
+                  {product?.baseStock ? (
+                    <Text className="text-sm text-artisan-muted">{t('buyer.max', { n: product.baseStock })}</Text>
+                  ) : null}
+                </View>
+                <Stepper
+                  value={quantity}
+                  onMinus={() => !pendingOnline && setQuantity(Math.max(1, quantity - 1))}
+                  onPlus={() => {
+                    if (pendingOnline) return;
+                    const limit = product?.baseStock || 10;
+                    if (quantity >= limit) {
+                      Alert.alert(t('buyer.limitTitle'), t('buyer.limitMsg', { n: limit }));
+                      return;
+                    }
+                    setQuantity(quantity + 1);
+                  }}
+                />
+              </View>
+            )}
           </View>
         ) : null}
 
         <View className="mb-4 rounded-2xl border border-artisan-border bg-white p-4">
           <Text className="mb-3 text-lg font-bold text-artisan-slate">{t('buyer.delivery')}</Text>
-          <Field label={t('buyer.address')}>
+          <Field
+            label={t('buyer.address')}
+            hint={addressFromProfile ? t('buyer.addressFromProfile') : undefined}
+          >
             <Input
               value={shippingAddress}
-              onChangeText={setShippingAddress}
+              onChangeText={(text) => {
+                addressEditedRef.current = true;
+                setShippingAddress(text);
+                setAddressFromProfile(false);
+              }}
               placeholder={t('buyer.addressPh')}
               multiline
               numberOfLines={3}

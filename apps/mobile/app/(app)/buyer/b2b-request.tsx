@@ -42,6 +42,7 @@ interface ProductDetail {
     b2bWholesalePrice?: number | null;
     minWholesaleQty?: number;
   };
+  minBulkQty?: number;
   media: {
     thumbnail: string | null;
   };
@@ -89,6 +90,9 @@ export default function BuyerB2BRequestScreen() {
         if (res.ok) {
           const data: ProductDetail = await res.json();
           setProduct(data);
+          if (data.minBulkQty) {
+            setRequestedQuantity(String(data.minBulkQty));
+          }
           if (data.pricing.recommendedPrice) {
             // Suggest ~20% wholesale discount
             const suggestedWholesale = Math.round(data.pricing.recommendedPrice * 0.8);
@@ -111,6 +115,16 @@ export default function BuyerB2BRequestScreen() {
       Alert.alert(t('buyer.qtyTitle'), t('buyer.qtyMsg'));
       return;
     }
+    if (qty < minQty) {
+      Alert.alert(t('bulk.minQtyTitle'), t('bulk.minQtyMsg', { n: minQty }));
+      return;
+    }
+
+    const price = parseFloat(targetPrice);
+    if (!price || price <= 0) {
+      Alert.alert(t('bulk.priceTitle'), t('bulk.priceMsg'));
+      return;
+    }
 
     if (!session?.access_token) {
       Alert.alert(t('common.loginRequired'), t('common.logInFirst'));
@@ -128,7 +142,7 @@ export default function BuyerB2BRequestScreen() {
         body: JSON.stringify({
           productId: product!.id,
           requestedQuantity: qty,
-          targetPrice: targetPrice ? parseFloat(targetPrice) : undefined,
+          targetPrice: Math.round(price * 100) / 100,
           deliveryTimeline: deliveryTimeline.trim() || undefined,
           message: message.trim() || undefined,
         }),
@@ -138,7 +152,7 @@ export default function BuyerB2BRequestScreen() {
         const data = await res.json();
         setInquiryCreated(data);
       } else {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         Alert.alert(t('buyer.notSent'), errData.message || t('common.somethingWrong'));
       }
     } catch (err) {
@@ -148,6 +162,8 @@ export default function BuyerB2BRequestScreen() {
       setSubmitting(false);
     }
   };
+
+  const minQty = product?.minBulkQty || 10;
 
   if (loading) {
     return (
@@ -189,8 +205,8 @@ export default function BuyerB2BRequestScreen() {
             <View className="flex-row justify-between py-1">
               <Text className="text-base text-artisan-muted">{t('buyer.yourPrice')}</Text>
               <Text className="text-base font-bold text-artisan-success">
-                {inquiryCreated.targetPricePerUnit
-                                    ? t('buyer.eachPrice', { p: inquiryCreated.targetPricePerUnit })
+                {inquiryCreated.targetPrice
+                  ? t('buyer.eachPrice', { p: inquiryCreated.targetPrice })
                   : t('buyer.artisanWillQuote')}
               </Text>
             </View>
@@ -200,7 +216,14 @@ export default function BuyerB2BRequestScreen() {
             </View>
           </View>
 
+          <Text className="mb-3 text-center text-base text-artisan-muted">{t('bulk.trackHint')}</Text>
+
           <View className="w-full" style={{ gap: 10 }}>
+            <Button
+              label={t('bulk.tabRequests')}
+              icon={Building2}
+              onPress={() => router.replace('/(app)/buyer-orders?tab=bulk' as any)}
+            />
             {Boolean(product?.artisan?.phone) ? (
               <Button
                 label={t('buyer.chatWhatsApp')}
@@ -262,16 +285,25 @@ export default function BuyerB2BRequestScreen() {
         ) : null}
 
         <View className="rounded-2xl border border-artisan-border bg-white p-4">
-          <Field label={t('buyer.howMany')}>
+          <Field label={t('buyer.howMany')} hint={t('bulk.fromUnits', { n: minQty })}>
             <IconInput
               icon={Package}
               value={requestedQuantity}
               onChangeText={setRequestedQuantity}
-              placeholder="e.g. 50"
+              placeholder={String(minQty)}
               keyboardType="number-pad"
             />
           </Field>
-          <Field label={t('buyer.pricePerPiece')}>
+          <Field
+            label={t('buyer.pricePerPiece')}
+            hint={
+              parseFloat(targetPrice) > 0 && parseInt(requestedQuantity, 10) > 0
+                ? t('bulk.total', {
+                    p: Math.round(parseFloat(targetPrice) * parseInt(requestedQuantity, 10) * 100) / 100,
+                  })
+                : undefined
+            }
+          >
             <IconInput
               icon={IndianRupee}
               value={targetPrice}

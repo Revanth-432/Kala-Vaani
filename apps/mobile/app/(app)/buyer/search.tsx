@@ -25,6 +25,7 @@ import { getApiBaseUrl } from '../../../src/lib/api';
 import { useCartStore } from '../../../src/store/useCartStore';
 import { Text, Chip, EmptyState, Loading, COLORS } from '../../../src/components/ui';
 import { useT, fontFor } from '../../../src/i18n';
+import { ProductStatsLine, type ProductRating } from '../../../src/components/Reviews';
 
 interface SearchResult {
   id: string;
@@ -41,6 +42,8 @@ interface SearchResult {
   marketingUrl?: string | null;
   similarityScore?: number;
   baseStock?: number;
+  buyerCount?: number;
+  rating?: ProductRating;
 }
 
 const QUICK_TAGS = [
@@ -165,6 +168,7 @@ export default function BuyerSearchScreen() {
               {item.artisanRegion ? ` · ${item.artisanRegion}` : ''}
             </Text>
             <Text className="mt-1 text-xl font-bold text-artisan-success">₹{item.price || 499}</Text>
+            <ProductStatsLine buyerCount={item.buyerCount} rating={item.rating} emptyKey="product.beFirst" size="sm" />
           </View>
         </TouchableOpacity>
 

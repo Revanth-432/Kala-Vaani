@@ -82,6 +82,15 @@ export class CreateProfileDto {
   role?: string;
 
   @ApiPropertyOptional({
+    description: 'Delivery address used at checkout',
+    example: '12, Gandhi Road, Vijayawada, Andhra Pradesh 520001',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  address?: string;
+
+  @ApiPropertyOptional({
     description: 'User phone number',
     example: '+919876543210',
   })

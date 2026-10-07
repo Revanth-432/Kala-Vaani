@@ -8,7 +8,7 @@ import {
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   Package,
   CheckCircle2,
@@ -33,6 +33,7 @@ import {
   COLORS,
 } from '../../src/components/ui';
 import { useT } from '../../src/i18n';
+import { BulkRequestsList, OrdersTabs } from '../../src/components/BulkRequests';
 
 interface OrderItem {
   id: string;
@@ -63,6 +64,8 @@ export default function ArtisanOrdersScreen() {
   const insets = useSafeAreaInsets();
   const { role, isLoading } = useAuthStore();
   const isFetchingRef = React.useRef(false);
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const [view, setView] = useState<'orders' | 'bulk'>(tab === 'bulk' ? 'bulk' : 'orders');
 
   // Guard: If a buyer ever navigates here, redirect immediately to buyer orders
   useEffect(() => {
@@ -332,8 +335,13 @@ export default function ArtisanOrdersScreen() {
         title={`${t('tabs.orders')} (${orders.length})`}
         onBack={() => router.navigate('/(app)/dashboard')}
       />
+      <OrdersTabs value={view} onChange={setView} ordersLabel={t('tabs.orders')} />
 
-      {loading ? (
+      {view === 'bulk' ? (
+        <View key="bulk" className="flex-1">
+          <BulkRequestsList side="seller" />
+        </View>
+      ) : loading ? (
         <View key="loading" className="flex-1">
           <Loading />
         </View>

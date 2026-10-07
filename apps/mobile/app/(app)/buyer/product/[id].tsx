@@ -25,6 +25,12 @@ import {
 import { getApiBaseUrl } from '../../../../src/lib/api';
 import { Text, Button, ScreenHeader, EmptyState, Loading, COLORS } from '../../../../src/components/ui';
 import { useT } from '../../../../src/i18n';
+import {
+  ProductStatsLine,
+  ReviewsSection,
+  type ProductRating,
+  type ProductReview,
+} from '../../../../src/components/Reviews';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -40,6 +46,10 @@ interface ProductDetail {
   culturalOrigin?: string | null;
   pattern?: string | null;
   colorPalette?: string[];
+  buyerCount?: number;
+  minBulkQty?: number;
+  rating?: ProductRating;
+  reviews?: ProductReview[];
   pricing: {
     recommendedPrice?: number | null;
     currency: string;
@@ -341,6 +351,9 @@ export default function BuyerProductDetailScreen() {
               <Text className="ml-1 text-sm font-bold text-artisan-success">{t('buyer.fairPrice')}</Text>
             </View>
           </View>
+          <View className="mt-2">
+            <ProductStatsLine buyerCount={product.buyerCount} rating={product.rating} emptyKey="product.beFirst" />
+          </View>
 
           <Text className="mt-4 text-base leading-6 text-artisan-slate">
             {product.story || product.description || t('buyer.handmadeDefault')}
@@ -412,6 +425,11 @@ export default function BuyerProductDetailScreen() {
           </View>
         </View>
 
+        {/* Reviews */}
+        <View className="mt-3 border-b border-artisan-border bg-white p-4">
+          <ReviewsSection rating={product.rating} reviews={product.reviews} />
+        </View>
+
         <View className="h-8" />
       </ScrollView>
 
@@ -429,6 +447,7 @@ export default function BuyerProductDetailScreen() {
         </View>
         <Button
           label={t('buyer.bulk')}
+          sublabel={product.minBulkQty ? t('bulk.fromUnits', { n: product.minBulkQty }) : undefined}
           icon={Building2}
           variant="secondary"
           onPress={() => router.push(`/(app)/buyer/b2b-request?productId=${product.id}` as any)}

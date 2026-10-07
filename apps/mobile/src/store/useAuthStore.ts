@@ -49,19 +49,19 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     try {
-      set({ isLoading: true });
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Error during signOut:', error);
-    } finally {
-      set({
-        session: null,
-        user: null,
-        role: '',
-        hasCompletedOnboarding: false,
-        isLoading: false,
-      });
     }
+    // Always clear local state (the onAuthStateChange listener may
+    // already have done this, but we guarantee it here as a fallback).
+    set({
+      session: null,
+      user: null,
+      role: '',
+      hasCompletedOnboarding: false,
+      isLoading: false,
+    });
   },
 }));
 

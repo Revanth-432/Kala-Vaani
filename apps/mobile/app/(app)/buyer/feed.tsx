@@ -29,6 +29,7 @@ import { useCartStore } from '../../../src/store/useCartStore';
 import { getApiBaseUrl } from '../../../src/lib/api';
 import { Text, Button, Chip, EmptyState, Loading, COLORS } from '../../../src/components/ui';
 import { useT } from '../../../src/i18n';
+import { ProductStatsLine, type ProductRating } from '../../../src/components/Reviews';
 
 interface FeedItem {
   id: string;
@@ -43,6 +44,8 @@ interface FeedItem {
   thumbnailUrl: string | null;
   marketingUrl?: string | null;
   baseStock?: number;
+  buyerCount?: number;
+  rating?: ProductRating;
 }
 
 type PriceFilter = 'ALL' | 'UNDER_1000' | '1000_TO_5000' | 'ABOVE_5000';
@@ -226,6 +229,9 @@ export default function BuyerFeedScreen() {
                 <Text className="text-sm text-artisan-muted" numberOfLines={1}>
                   {t('common.by', { name: item.artisanName || 'Artisan' })} · {item.craftType || item.category}
                 </Text>
+                <View className="mt-1">
+                  <ProductStatsLine buyerCount={item.buyerCount} rating={item.rating} emptyKey="product.beFirst" size="sm" />
+                </View>
               </View>
               <Text className="text-2xl font-bold text-artisan-success">₹{item.price || 499}</Text>
             </View>

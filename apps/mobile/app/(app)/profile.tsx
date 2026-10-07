@@ -18,6 +18,7 @@ import {
   Languages,
   Bell,
   MapPin,
+  Home,
   Compass,
   Pencil,
   User,
@@ -36,6 +37,7 @@ import {
   ScreenHeader,
   Field,
   IconInput,
+  Input,
   COLORS,
 } from '../../src/components/ui';
 import { useT } from '../../src/i18n';
@@ -48,6 +50,7 @@ interface ProfileDetails {
   state: string;
   businessName: string;
   craftType: string;
+  address: string;
 }
 
 export default function ProfileScreen() {
@@ -80,6 +83,7 @@ export default function ProfileScreen() {
         state: p?.state || '',
         businessName: p?.businessName || '',
         craftType: p?.craftType || '',
+        address: p?.address || '',
       });
     } catch {
       // Offline: fall back to what the account metadata has
@@ -110,10 +114,7 @@ export default function ProfileScreen() {
         {
           text: t('common.yes'),
           style: 'destructive',
-          onPress: async () => {
-            await signOut();
-            router.replace('/(auth)/login');
-          },
+          onPress: () => signOut(),
         },
       ],
     );
@@ -190,6 +191,12 @@ export default function ProfileScreen() {
               <InfoRow icon={MapPin} label={t('onb.district')} value={location} />
             </View>
           ) : null}
+          {isBuyer && details?.address ? (
+            <View key="row-address">
+              <View className="h-px bg-artisan-border" />
+              <InfoRow icon={Home} label={t('profile.address')} value={details.address} />
+            </View>
+          ) : null}
           {!isBuyer && details?.businessName ? (
             <View key="row-shop">
               <View className="h-px bg-artisan-border" />
@@ -258,6 +265,7 @@ export default function ProfileScreen() {
               state: details?.state || '',
               businessName: details?.businessName || '',
               craftType: details?.craftType || '',
+              address: details?.address || '',
             }}
             isBuyer={isBuyer}
             onCancel={() => setIsEditing(false)}
@@ -298,6 +306,7 @@ function EditDetailsForm({
       state: form.state.trim(),
       businessName: form.businessName.trim(),
       craftType: form.craftType.trim(),
+      address: form.address.trim(),
     };
 
     const nextErrors: typeof errors = {};
@@ -320,7 +329,9 @@ function EditDetailsForm({
       region: cleaned.region,
       state: cleaned.state,
     };
-    if (!isBuyer) {
+    if (isBuyer) {
+      payload.address = cleaned.address;
+    } else {
       payload.businessName = cleaned.businessName;
       payload.craftType = cleaned.craftType;
     }
@@ -419,6 +430,18 @@ function EditDetailsForm({
               placeholder={t('onb.statePh')}
             />
           </Field>
+
+          {isBuyer ? (
+            <Field key="buyer-address" label={t('profile.address')}>
+              <Input
+                value={form.address}
+                onChangeText={set('address')}
+                placeholder={t('profile.addressPh')}
+                multiline
+                numberOfLines={3}
+              />
+            </Field>
+          ) : null}
 
           {!isBuyer ? (
             <View key="artisan-fields">

@@ -46,7 +46,9 @@ export class MarketplaceController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.marketplaceService.getFeed(Number(page) || 1, Number(limit) || 20);
+    return this.marketplaceService.withStats(
+      await this.marketplaceService.getFeed(Number(page) || 1, Number(limit) || 20),
+    );
   }
 
   @Get('search')
@@ -75,7 +77,9 @@ export class MarketplaceController {
     @Query('q') query: string,
     @Query('limit') limit: number = 20,
   ) {
-    return this.marketplaceService.semanticSearch(query, Number(limit) || 20);
+    return this.marketplaceService.withStats(
+      await this.marketplaceService.semanticSearch(query, Number(limit) || 20),
+    );
   }
 
   @Get(':id')

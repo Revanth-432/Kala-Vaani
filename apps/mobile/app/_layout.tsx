@@ -74,36 +74,39 @@ export default function RootLayout() {
   // 2. Navigation protection guard
   useEffect(() => {
     if (!rootNavigationState?.key) return; // Wait for navigation state to be ready
-    if (isLoading || !role) return;
+    if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const isOnboarding = (segments as string[]).includes('onboarding');
     const isBuyer = role === 'BUYER' || role === 'B2B_BUYER';
     const subRoute = (segments as string[])[1];
 
-    if (!session && !inAuthGroup) {
-      // Redirect to login if user is not authenticated
-      router.replace('/(auth)/login');
-    } else if (session) {
-      if (!hasCompletedOnboarding) {
-        // Authenticated user has not finished onboarding -> send to onboarding
-        if (!isOnboarding) {
-          router.replace('/(auth)/onboarding');
-        }
-      } else if (inAuthGroup) {
-        // Authenticated & onboarded user inside auth screens -> route to respective home
-        if (isBuyer) {
-          router.replace('/(app)/buyer/feed');
-        } else {
-          router.replace('/(app)/dashboard');
-        }
-      } else if (segments[0] === '(app)') {
-        // Strict boundary: prevent Seller from being in Buyer tabs and vice-versa
-        if (!isBuyer && (subRoute === 'buyer' || subRoute === 'cart' || subRoute === 'buyer-orders')) {
-          router.replace('/(app)/dashboard');
-        } else if (isBuyer && (subRoute === 'dashboard' || subRoute === 'catalog' || subRoute === 'orders' || subRoute === 'capture' || subRoute === 'product')) {
-          router.replace('/(app)/buyer/feed');
-        }
+    if (!session) {
+      // No session — always send to login (unless already there)
+      if (!inAuthGroup) {
+        router.replace('/(auth)/login');
+      }
+    } else if (!role) {
+      // Session exists but role isn't resolved yet — wait
+      return;
+    } else if (!hasCompletedOnboarding) {
+      // Authenticated user has not finished onboarding -> send to onboarding
+      if (!isOnboarding) {
+        router.replace('/(auth)/onboarding');
+      }
+    } else if (inAuthGroup) {
+      // Authenticated & onboarded user inside auth screens -> route to respective home
+      if (isBuyer) {
+        router.replace('/(app)/buyer/feed');
+      } else {
+        router.replace('/(app)/dashboard');
+      }
+    } else if (segments[0] === '(app)') {
+      // Strict boundary: prevent Seller from being in Buyer tabs and vice-versa
+      if (!isBuyer && (subRoute === 'buyer' || subRoute === 'cart' || subRoute === 'buyer-orders')) {
+        router.replace('/(app)/dashboard');
+      } else if (isBuyer && (subRoute === 'dashboard' || subRoute === 'catalog' || subRoute === 'orders' || subRoute === 'capture' || subRoute === 'product' || subRoute === 'analytics')) {
+        router.replace('/(app)/buyer/feed');
       }
     }
   }, [session, role, hasCompletedOnboarding, isLoading, segments]);

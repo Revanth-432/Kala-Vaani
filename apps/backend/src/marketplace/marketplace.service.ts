@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmbeddingService } from '../search/embedding.service';
 import { ProductStatus, MediaType } from '@artisan/database';
+import { effectiveMinBulkQty } from '../common/bulk';
 
 export interface FeedItem {
   id: string;
@@ -19,6 +20,8 @@ export interface FeedItem {
   similarityScore?: number;
   status: string;
   baseStock?: number;
+  buyerCount?: number;
+  rating?: { average: number | null; count: number };
 }
 
 @Injectable()
@@ -29,6 +32,14 @@ export class MarketplaceService {
     private readonly prisma: PrismaService,
     private readonly embeddingService: EmbeddingService,
   ) {}
+
+  /**
+   * Adds the buyer count and star rating to each feed/search card.
+   */
+  async withStats(items: FeedItem[]): Promise<FeedItem[]> {
+    const stats = await this.prisma.getProductStats(items.map((i) => i.id));
+    return items.map((item) => ({ ...item, ...stats.get(item.id) }));
+  }
 
   /**
    * Returns a paginated list of published crafts for the marketplace feed.
@@ -295,6 +306,12 @@ export class MarketplaceService {
       return null;
     }
 
+    const [stats, reviews] = await Promise.all([
+      this.prisma.getProductStats([product.id]),
+      this.prisma.getProductReviews(product.id),
+    ]);
+    const { buyerCount, rating } = stats.get(product.id)!;
+
     const enTranslation =
       product.translations.find((t) => t.languageCode === 'en') ||
       product.translations[0];
@@ -326,6 +343,10 @@ export class MarketplaceService {
       weight: product.metadata?.weight,
       status: product.status,
       baseStock: product.baseStock,
+      buyerCount,
+      rating,
+      reviews,
+      minBulkQty: effectiveMinBulkQty(product.minBulkQty),
       createdAt: product.createdAt,
 
       pricing: {

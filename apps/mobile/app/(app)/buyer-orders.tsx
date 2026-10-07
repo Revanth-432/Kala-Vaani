@@ -1,17 +1,19 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   FlatList,
   Image,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   Package,
   ShoppingBag,
   MapPin,
   Store,
+  Star,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { supabase } from '../../src/lib/supabase';
@@ -27,6 +29,8 @@ import {
   COLORS,
 } from '../../src/components/ui';
 import { useT } from '../../src/i18n';
+import { Stars, RateItemModal } from '../../src/components/Reviews';
+import { BulkRequestsList, OrdersTabs } from '../../src/components/BulkRequests';
 
 interface OrderItem {
   id: string;
@@ -35,6 +39,7 @@ interface OrderItem {
   quantity: number;
   priceAtPurchase: number;
   thumbnailUrl: string | null;
+  myReview?: { rating: number; comment: string | null } | null;
 }
 
 interface BuyerOrder {
@@ -56,6 +61,12 @@ export default function BuyerOrdersScreen() {
   const insets = useSafeAreaInsets();
   const { role, isLoading } = useAuthStore();
   const isFetchingRef = React.useRef(false);
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const [view, setView] = useState<'orders' | 'bulk'>(tab === 'bulk' ? 'bulk' : 'orders');
+
+  useEffect(() => {
+    if (tab === 'bulk') setView('bulk');
+  }, [tab]);
 
   // Role Protection Guard
   React.useEffect(() => {
@@ -67,6 +78,20 @@ export default function BuyerOrdersScreen() {
   const [orders, setOrders] = useState<BuyerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [rateTarget, setRateTarget] = useState<OrderItem | null>(null);
+
+  // Show the new rating right away on every order line for that product
+  const handleReviewSaved = (review: { rating: number; comment: string | null }) => {
+    const productId = rateTarget?.productId;
+    setRateTarget(null);
+    if (!productId) return;
+    setOrders((prev) =>
+      prev.map((order) => ({
+        ...order,
+        items: order.items.map((i) => (i.productId === productId ? { ...i, myReview: review } : i)),
+      })),
+    );
+  };
 
   const fetchOrders = useCallback(async (isSilent = false) => {
     if (isFetchingRef.current) return;
@@ -167,6 +192,26 @@ export default function BuyerOrdersScreen() {
                   <Text className="text-base text-artisan-muted">
                     {orderItem.quantity} × ₹{orderItem.priceAtPurchase}
                   </Text>
+                  {item.status === 'DELIVERED' ? (
+                    <TouchableOpacity
+                      key="rate"
+                      onPress={() => setRateTarget(orderItem)}
+                      className="mt-1 flex-row items-center self-start"
+                      hitSlop={8}
+                    >
+                      {orderItem.myReview ? (
+                        <>
+                          <Stars value={orderItem.myReview.rating} size={16} />
+                          <Text className="ml-2 text-sm font-bold text-artisan-primary">{t('reviews.edit')}</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Star color={COLORS.primary} size={16} />
+                          <Text className="ml-1 text-sm font-bold text-artisan-primary">{t('reviews.rate')}</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               </View>
             ))
@@ -193,8 +238,13 @@ export default function BuyerOrdersScreen() {
         title={`${t('buyer.myOrders')} (${orders.length})`}
         onBack={() => router.navigate('/(app)/buyer/feed' as any)}
       />
+      <OrdersTabs value={view} onChange={setView} ordersLabel={t('tabs.orders')} />
 
-      {loading ? (
+      {view === 'bulk' ? (
+        <View key="bulk" className="flex-1">
+          <BulkRequestsList side="buyer" />
+        </View>
+      ) : loading ? (
         <View key="loading" className="flex-1">
           <Loading />
         </View>
@@ -230,6 +280,16 @@ export default function BuyerOrdersScreen() {
           }
         />
       )}
+
+      <RateItemModal
+        visible={!!rateTarget}
+        productId={rateTarget?.productId ?? ''}
+        productTitle={rateTarget?.title ?? ''}
+        initialRating={rateTarget?.myReview?.rating ?? 0}
+        initialComment={rateTarget?.myReview?.comment ?? ''}
+        onClose={() => setRateTarget(null)}
+        onSaved={handleReviewSaved}
+      />
     </View>
   );
 }

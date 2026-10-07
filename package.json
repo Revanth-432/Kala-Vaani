@@ -7,6 +7,13 @@
     "packages/*"
   ],
   "overrides": {
-    "@expo/server": "0.4.4"
+    "@expo/server": "0.4.4",
+    "react-native-svg": "15.8.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@scarf/scarf@1.4.0": true,
+    "prisma@6.19.3": true
   }
 }

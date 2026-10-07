@@ -61,6 +61,17 @@ export class OrdersController {
     return this.ordersService.getArtisanOrders(user.id);
   }
 
+  @Get('artisan/analytics')
+  @ApiOperation({
+    summary: "Sales analytics for the logged-in artisan",
+    description:
+      'Buyer count, open orders, revenue, average item price and revenue per month for the last 12 months. ' +
+      'Cancelled orders and online checkouts that were never paid are left out.',
+  })
+  async getArtisanAnalytics(@CurrentUser() user: AuthenticatedUser) {
+    return this.ordersService.getArtisanAnalytics(user.id);
+  }
+
   @Get('buyer')
   @ApiOperation({
     summary: 'Retrieve order history for the logged-in buyer',

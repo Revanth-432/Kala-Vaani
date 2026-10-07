@@ -54,9 +54,14 @@ enum OrderStatus {
 }
 
 enum InquiryStatus {
-  OPEN
-  RESPONDED
-  CLOSED
+  OPEN       // buyer sent the request, waiting for the seller
+  RESPONDED  // legacy
+  CLOSED     // legacy
+  COUNTERED  // seller offered a different price, waiting for the buyer
+  ACCEPTED   // price agreed, buyer can pay
+  REJECTED   // seller turned the request down
+  DECLINED   // buyer turned the seller's price down
+  ORDERED    // buyer placed the order at the agreed price
 }
 
 // ==============================================================================
@@ -78,6 +83,7 @@ model User {
   artisanOrders       Order[]      @relation("ArtisanOrders")
   b2bBuyerInquiries   B2BInquiry[] @relation("B2BBuyerInquiries")
   artisanB2BInquiries B2BInquiry[] @relation("ArtisanB2BInquiries")
+  reviews             Review[]     @relation("BuyerReviews")
 
   @@map("users")
   @@index([email])
@@ -96,6 +102,8 @@ model Profile {
   preferredLanguage String   @default("en") @map("preferred_language")
   bio               String?  @db.Text
   avatarUrl         String?  @map("avatar_url")
+  // Delivery address, filled in at checkout so buyers don't retype it
+  address           String?  @db.Text
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -117,6 +125,8 @@ model Product {
   category     String        @map("category")
   status       ProductStatus @default(DRAFT) @map("status")
   baseStock    Int           @default(1) @map("base_stock")
+  // Smallest quantity a bulk (wholesale) request may ask for; null = app default
+  minBulkQty   Int?          @map("min_bulk_qty")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
@@ -126,6 +136,7 @@ model Product {
   media        Media[]
   pricing      Pricing?
   orderItems   OrderItem[]
+  reviews      Review[]
   b2bInquiries B2BInquiry[]
 
   @@map("products")
@@ -337,6 +348,24 @@ model OrderItem {
   @@index([productId])
 }
 
+// One review per buyer per product; posting again updates it.
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  buyerId   String   @map("buyer_id") @db.Uuid
+  rating    Int      @map("rating")
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer     User     @relation("BuyerReviews", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, buyerId])
+  @@map("reviews")
+  @@index([productId])
+}
+
 model B2BInquiry {
   id                String        @id @default(uuid()) @db.Uuid
   b2bBuyerId        String        @map("b2b_buyer_id") @db.Uuid
@@ -344,6 +373,12 @@ model B2BInquiry {
   productId         String        @map("product_id") @db.Uuid
   requestedQuantity Int           @map("requested_quantity")
   targetPrice       Decimal?      @map("target_price") @db.Decimal(10, 2)
+  // Seller's price per unit when they counter the buyer's offer
+  counterPrice      Decimal?      @map("counter_price") @db.Decimal(10, 2)
+  // Final price per unit both sides agreed on
+  agreedPrice       Decimal?      @map("agreed_price") @db.Decimal(10, 2)
+  // Order placed from this request
+  orderId           String?       @map("order_id") @db.Uuid
   deliveryTimeline  String?       @map("delivery_timeline")
   message           String?       @map("message") @db.Text
   status            InquiryStatus @default(OPEN) @map("status")

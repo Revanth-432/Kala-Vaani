@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
   Body,
   Param,
   UseGuards,
@@ -18,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { B2BService } from './b2b.service';
 import { CreateB2BInquiryDto } from './dto/create-inquiry.dto';
-import { UpdateInquiryStatusDto } from './dto/update-inquiry-status.dto';
+import { RespondInquiryDto, BuyerDecisionDto } from './dto/respond-inquiry.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -60,29 +59,46 @@ export class B2BController {
     return this.b2bService.getArtisanInquiries(user.id);
   }
 
-  @Patch('inquiries/:id/status')
+  @Get('inquiries/buyer')
+  @ApiOperation({ summary: 'Bulk requests sent by the logged-in buyer' })
+  async getBuyerInquiries(@CurrentUser() user: AuthenticatedUser) {
+    return this.b2bService.getBuyerInquiries(user.id);
+  }
+
+  @Get('inquiries/:id')
+  @ApiOperation({ summary: 'One bulk request (its buyer or seller only)' })
+  @ApiParam({ name: 'id', description: 'UUID of the bulk inquiry' })
+  async getInquiry(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.b2bService.getInquiry(id, user.id);
+  }
+
+  @Post('inquiries/:id/respond')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Update bulk inquiry status',
-    description: 'Artisan can mark inquiry as OPEN, RESPONDED, or CLOSED.',
+    summary: 'Seller answers a bulk request',
+    description: "ACCEPT the buyer's price, COUNTER with counterPrice, or REJECT. Only while the request is OPEN.",
   })
-  @ApiParam({
-    name: 'id',
-    description: 'UUID of the bulk inquiry',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Inquiry status updated successfully.',
-  })
-  async updateInquiryStatus(
+  @ApiParam({ name: 'id', description: 'UUID of the bulk inquiry' })
+  async respondAsSeller(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: UpdateInquiryStatusDto,
+    @Body() dto: RespondInquiryDto,
   ) {
-    return this.b2bService.updateInquiryStatus(
-      id,
-      user.id,
-      dto.status,
-      user.roles || [],
-    );
+    return this.b2bService.respondAsSeller(id, user.id, dto.action, dto.counterPrice);
+  }
+
+  @Post('inquiries/:id/decision')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Buyer accepts or declines the seller's counter price",
+    description: 'Only while the request is COUNTERED. After ACCEPT the buyer pays through POST /orders with inquiryId.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID of the bulk inquiry' })
+  async respondAsBuyer(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: BuyerDecisionDto,
+  ) {
+    return this.b2bService.respondAsBuyer(id, user.id, dto.action);
   }
 }

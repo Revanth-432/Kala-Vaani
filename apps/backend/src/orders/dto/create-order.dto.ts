@@ -73,4 +73,12 @@ export class CreateOrderDto {
   @IsOptional()
   @IsIn(['COD', 'ONLINE'])
   paymentMethod?: 'COD' | 'ONLINE';
+
+  @ApiPropertyOptional({
+    description:
+      'Accepted bulk request to pay for. Its product, quantity and agreed price are used instead of items.',
+  })
+  @IsOptional()
+  @IsUUID()
+  inquiryId?: string;
 }

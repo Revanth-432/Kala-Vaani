@@ -34,6 +34,13 @@ import {
   COLORS,
 } from '../../../src/components/ui';
 import { useT } from '../../../src/i18n';
+import { BulkMinSetting } from '../../../src/components/BulkRequests';
+import {
+  ProductStatsLine,
+  ReviewsSection,
+  type ProductRating,
+  type ProductReview,
+} from '../../../src/components/Reviews';
 import { PosterMaker } from '../../../src/components/PosterMaker';
 
 interface MediaItem {
@@ -53,6 +60,10 @@ interface ProductDetails {
     shortDescription: string;
     craftType?: string;
     materials?: string;
+    buyerCount?: number;
+    minBulkQty?: number;
+    rating?: ProductRating;
+    reviews?: ProductReview[];
     pricing?: {
       aiMinPrice: number;
       aiRecommendedPrice: number;
@@ -86,7 +97,9 @@ export default function ProductMarketingScreen() {
   // Role Protection Guard: Buyers cannot access artisan studio
   useEffect(() => {
     if (!isLoading && role && (role === 'BUYER' || role === 'B2B_BUYER')) {
-      router.replace(`/(app)/buyer/product/${id}` as any);
+      setTimeout(() => {
+        router.replace(`/(app)/buyer/product/${id}` as any);
+      }, 0);
     }
   }, [role, isLoading, id]);
 
@@ -154,8 +167,10 @@ export default function ProductMarketingScreen() {
   };
 
   useEffect(() => {
+    if (isLoading) return;
+    if (role === 'BUYER' || role === 'B2B_BUYER') return;
     fetchProductDetails();
-  }, [id]);
+  }, [id, role, isLoading]);
 
   useEffect(() => {
     if (data && poster === '1' && !posterAutoOpenedRef.current) {
@@ -503,6 +518,9 @@ export default function ProductMarketingScreen() {
               ₹{product.pricing.aiMinPrice} – ₹{product.pricing.aiPremiumPrice}
             </Text>
           ) : null}
+          <View className="mt-2">
+            <ProductStatsLine buyerCount={product.buyerCount} rating={product.rating} emptyKey="product.boughtNone" />
+          </View>
           {product.shortDescription ? (
             <Text className="mt-2 text-base leading-6 text-artisan-slate">
               {product.shortDescription}
@@ -511,6 +529,16 @@ export default function ProductMarketingScreen() {
           {product.materials ? (
             <Text className="mt-2 text-base text-artisan-muted">{t('product.madeOf', { m: product.materials })}</Text>
           ) : null}
+        </View>
+
+        {/* Bulk order threshold */}
+        <View className="mb-5 rounded-2xl border border-artisan-border bg-white p-4">
+          <BulkMinSetting key={product.id} productId={product.id} initial={product.minBulkQty ?? 10} />
+        </View>
+
+        {/* Buyer reviews */}
+        <View className="mb-5 rounded-2xl border border-artisan-border bg-white p-4">
+          <ReviewsSection rating={product.rating} reviews={product.reviews} />
         </View>
 
         {/* Actions */}

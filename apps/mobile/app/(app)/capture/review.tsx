@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import {
-  Sparkles,
   Layers,
   IndianRupee,
   Palette,
@@ -46,7 +45,7 @@ interface ReviewFormData {
 
 export default function ReviewScreen() {
   const router = useRouter();
-  const { t, language } = useT();
+  const { t } = useT();
   const insets = useSafeAreaInsets();
   const { role, isLoading } = useAuthStore();
 
@@ -58,7 +57,7 @@ export default function ReviewScreen() {
   }, [role, isLoading, router]);
 
   const { imageUri, imageUris, audioUri, aiGeneratedData, resetDraft } = useDraftStore();
-  const [loadingState, setLoadingState] = useState<'idle' | 'publishing' | 'angles' | 'posters'>('idle');
+  const [loadingState, setLoadingState] = useState<'idle' | 'publishing'>('idle');
 
   const { control, handleSubmit } = useForm<ReviewFormData>({
     defaultValues: {
@@ -132,64 +131,23 @@ export default function ReviewScreen() {
       headers: { Authorization: `Bearer ${accessToken}` },
       body: formData,
     });
-    const responseData = await response.json();
+    const responseData = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(responseData.message || 'Failed to publish craft');
 
-    return responseData.id || responseData.product?.id;
+    const productId = responseData.id || responseData.product?.id;
+    if (!productId) throw new Error('Failed to publish craft');
+    return productId;
   };
 
   const handleBasicPublish = async (data: ReviewFormData) => {
     try {
       setLoadingState('publishing');
-      await publishDraftPhase(data);
-      Alert.alert(
-                t('capture.savedTitle'),
-        t('capture.savedMsg', { title: data.title }),
-        [
-          {
-            text: t('capture.goHome'),
-            onPress: () => {
-              resetDraft();
-              router.replace('/(app)/dashboard');
-            },
-          },
-        ],
-      );
+      const productId = await publishDraftPhase(data);
+      resetDraft();
+      router.replace(`/(app)/product/${productId}` as any);
     } catch (err: any) {
       Alert.alert(t('capture.saveFailed'), friendlyError(err.message, t));
     } finally {
-      setLoadingState('idle');
-    }
-  };
-
-  const handleGenerateAngles = async (data: ReviewFormData) => {
-    try {
-      setLoadingState('angles');
-      const productId = await publishDraftPhase(data);
-      
-      const { session } = useAuthStore.getState();
-      await fetch(`${getApiBaseUrl()}/images/${productId}/process-background`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
-
-      resetDraft();
-      router.replace(`/(app)/product/${productId}`);
-    } catch (err: any) {
-      Alert.alert(t('capture.saveFailed'), friendlyError(err.message, t));
-      setLoadingState('idle');
-    }
-  };
-
-  const handleGeneratePosters = async (data: ReviewFormData) => {
-    try {
-      setLoadingState('posters');
-      const productId = await publishDraftPhase(data);
-
-      resetDraft();
-      router.replace(`/(app)/product/${productId}?poster=1` as any);
-    } catch (err: any) {
-      Alert.alert(t('capture.saveFailed'), friendlyError(err.message, t));
       setLoadingState('idle');
     }
   };
@@ -345,22 +303,6 @@ export default function ReviewScreen() {
             loading={loadingState === 'publishing'}
             disabled={busy}
             onPress={handleSubmit(handleBasicPublish)}
-          />
-          <Button
-            label={t('capture.saveMorePhotos')}
-            icon={Layers}
-            variant="secondary"
-            loading={loadingState === 'angles'}
-            disabled={busy}
-            onPress={handleSubmit(handleGenerateAngles)}
-          />
-          <Button
-            label={t('capture.savePoster')}
-            icon={Sparkles}
-            variant="secondary"
-            loading={loadingState === 'posters'}
-            disabled={busy}
-            onPress={handleSubmit(handleGeneratePosters)}
           />
         </View>
       </ScrollView>

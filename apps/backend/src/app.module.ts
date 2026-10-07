@@ -13,6 +13,7 @@ import { MarketingModule } from './marketing/marketing.module';
 import { SearchModule } from './search/search.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { OrdersModule } from './orders/orders.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { B2BModule } from './b2b/b2b.module';
 import { AdminModule } from './admin/admin.module';
 
@@ -38,6 +39,7 @@ import { AdminModule } from './admin/admin.module';
     SearchModule,
     MarketplaceModule,
     OrdersModule,
+    ReviewsModule,
     B2BModule,
     AdminModule,
   ],

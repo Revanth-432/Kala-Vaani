@@ -1,8 +1,10 @@
 import {
   Injectable,
   BadRequestException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { PrismaService } from '../database/prisma.service';
 import { CatalogRepository } from './catalog.repository';
 import { SupabaseStorageService, UploadResult } from '../storage/supabase-storage.service';
 import { PricingService } from '../pricing/pricing.service';
@@ -23,6 +25,7 @@ export class CatalogService {
     private readonly pricingService: PricingService,
     private readonly userRepository: UserRepository,
     private readonly embeddingService: EmbeddingService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -145,6 +148,20 @@ export class CatalogService {
     } catch (err: any) {
       throw new BadRequestException(err.message || 'Could not update craft status');
     }
+  }
+
+  /**
+   * Sets the smallest bulk-request quantity for one of the artisan's crafts
+   */
+  async updateBulkSettings(productId: string, artisanId: string, minBulkQty: number) {
+    const { count } = await this.prisma.product.updateMany({
+      where: { id: productId, artisanId },
+      data: { minBulkQty },
+    });
+    if (count === 0) {
+      throw new NotFoundException('Craft not found');
+    }
+    return { id: productId, minBulkQty };
   }
 
   /**

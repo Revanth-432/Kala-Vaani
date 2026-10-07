@@ -1,3 +1,4 @@
+import { effectiveMinBulkQty } from '../common/bulk';
 import {
   Injectable,
   Logger,
@@ -136,6 +137,12 @@ export class PollinationsApiService {
       );
     }
 
+    const [stats, reviews] = await Promise.all([
+      this.prisma.getProductStats([product.id]),
+      this.prisma.getProductReviews(product.id),
+    ]);
+    const { buyerCount, rating } = stats.get(product.id)!;
+
     const originals = product.media
       .filter((m) => m.mediaType === MediaType.ORIGINAL_PHOTO)
       .sort((a, b) => a.displayOrder - b.displayOrder);
@@ -160,6 +167,10 @@ export class PollinationsApiService {
         craftType: product.metadata?.craftType,
         materials: product.metadata?.material,
         pricing: product.pricing,
+        buyerCount,
+        rating,
+        reviews,
+        minBulkQty: effectiveMinBulkQty(product.minBulkQty),
       },
       artisan: {
         name: product.artisan.profile?.fullName || null,
