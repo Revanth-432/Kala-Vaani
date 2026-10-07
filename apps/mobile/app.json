@@ -31,6 +31,15 @@
     "plugins": [
       "expo-router",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "1966f4ae-a91b-41a4-a569-d6f10d4a5d12"
+      }
+    },
+    "owner": "revanth_h"
   }
 }
